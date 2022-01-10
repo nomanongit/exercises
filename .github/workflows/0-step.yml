@@ -1,0 +1,55 @@
+name: Step 0
+
+on:
+  workflow_dispatch:
+  watch:
+    types: [started]
+
+# Reference: https://docs.github.com/en/actions/security-guides/automatic-token-authentication
+permissions:
+  # Need `contents: read` to checkout the repository.
+  # Need `contents: write` to update the step metadata.
+  contents: write
+
+jobs:
+  check_step:
+    name: Check current step
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout step file and action from repo
+        uses: actions/checkout@v4
+        with:
+          sparse-checkout: |
+            .github/steps/-step.txt
+            .github/actions/check-steps/action.yml
+          sparse-checkout-cone-mode: false
+
+      - name: Debug
+        run: echo '${{ toJson(github) }}'
+
+      - name: Run checks
+        uses: ./.github/actions/check-steps
+        with:
+          step: 0
+          initialize_step_file: true
+          skip_branch_check: true
+
+  main:
+    needs: check_step
+    runs-on: ubuntu-latest
+
+    steps:
+      # We'll need to check out the repository so that we can edit README.md.
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Let's get all the branches.
+
+      # In README.md, switch step 0 for step 1.
+      - name: Update to step 1
+        uses: skills/action-update-step@v2
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          from_step: 0
+          to_step: 1
+          base_branch_name: step

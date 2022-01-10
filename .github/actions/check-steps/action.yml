@@ -1,0 +1,58 @@
+name: "Check step"
+description: "Check what step the repository is on."
+inputs:
+  step:
+    description: "Step to check for"
+  initialize_step_file:
+    description: "Initialize step file"
+    required: false
+    default: false
+  skip_branch_check:
+    description: "Skip branch check"
+    required: false
+    default: false
+
+runs:
+  using: composite
+  steps:
+    # Create new branch with no files
+    - name: Create step branch
+      if: ${{ inputs.initialize_step_file == 'true' }}
+      shell: bash
+      run: |
+        git config user.name github-actions[bot]
+        git config user.email github-actions[bot]@users.noreply.github.com
+
+        git switch -c step
+        git reset --hard
+        echo "0" > .github/steps/-step.txt
+        git add .
+        git commit -m "Initialize step file" --allow-empty
+        git push --set-upstream origin step
+
+    - name: Read step from file
+      id: get_step
+      shell: bash
+      run: |
+        git switch step
+        echo "step=$(cat .github/steps/-step.txt)" >> $GITHUB_OUTPUT
+
+    # - name: Debug output
+    #   shell: bash
+    #   run: |
+    #     echo "Current step: ${{ steps.get_step.outputs.step }}"
+
+    - name: Check if correct step
+      if: ${{ steps.get_step.outputs.step != inputs.step }}
+      shell: bash
+      run: exit 1
+
+    - name: Check if template repository
+      if:  github.event.repository.is_template
+      shell: bash
+      run: exit 1
+
+    - name: Check if branch isn't correct
+      if: ${{ !inputs.skip_branch_check && github.ref_type == 'branch' && github.ref_name != format('lesson/{0}', inputs.step) }}
+      shell: bash
+      run: exit 1

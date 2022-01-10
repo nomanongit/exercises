@@ -1,0 +1,61 @@
+name: Lesson - Step 5
+
+# This step listens for the learner to open a pull request with branch `my-first-branch`.
+# This workflow updates from step 3 to step 4.
+
+# This will run every time we create a branch or tag.
+# Reference: https://docs.github.com/en/actions/learn-github-actions/events-that-trigger-workflows
+on:
+  workflow_dispatch:
+  pull_request:
+    types:
+      - opened
+      - reopened
+
+# Reference: https://docs.github.com/en/actions/security-guides/automatic-token-authentication
+permissions:
+  # Need `contents: read` to checkout the repository.
+  # Need `contents: write` to update the step metadata.
+  contents: write
+
+
+jobs:
+  check_step:
+    name: Check step
+    runs-on: ubuntu-latest
+    steps:
+      # Needed so we can read the step number from -step.txt
+      - name: Checkout step file from repo
+        uses: actions/checkout@v4
+        with:
+          ref: step
+          sparse-checkout: |
+            .github/steps/-step.txt
+            .github/actions/check-steps/action.yml
+          sparse-checkout-cone-mode: false
+
+      - name: Run checks
+        uses: ./.github/actions/check-steps
+        with:
+          step: 5
+
+  main:
+    needs: check_step
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch' || success()
+    steps:
+      # We'll need to check out the repository so that we can edit the README.
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Let's get all the branches.
+          ref: lesson/4  # Important, as normally `pull_request` event won't grab other branches.
+
+      # In README.md, switch step 4 for step 5.
+      - name: Update to step 5
+        uses: skills/action-update-step@v2
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          from_step: 5
+          to_step: X
+          base_branch_name: step

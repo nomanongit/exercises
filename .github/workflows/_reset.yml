@@ -1,0 +1,64 @@
+name: Admin - Reset repo
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - develop
+
+# Reference: https://docs.github.com/en/actions/security-guides/automatic-token-authentication
+permissions:
+  contents: write
+
+jobs:
+  reset:
+    name: Reset repository
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Grabs all branches
+          token: ${{ secrets.GH_TRAINING_TOKEN }}
+
+      - name: Commit changes
+        run: |
+          git switch main
+
+          # Rename main branch to main-old
+          git branch -m main main-old
+          git push -u origin main-old --force
+
+          git switch develop
+
+          # Checkout first commit in repository
+          git checkout $(git rev-list --max-parents=0 HEAD)
+
+          rm -Rf .github *
+
+          # Restore all files from develop branch
+          git checkout develop -- .
+
+          # Create new main branch
+          git switch -c main
+
+      - name: Update client name in *.md and *.html
+        run: |
+          find . -type f -name "*.md" -exec sed -i "s/_CLIENT_NAME_/${{ vars.CLIENT_NAME }}/g" {} +
+          find . -type f -name "*.html" -exec sed -i "s/$_CLIENT_NAME_/${{ vars.CLIENT_NAME }}/g" {} +
+        env:
+          CLIENT_NAME: ${{ vars.CLIENT_NAME }}
+
+      - name: Set step to 0
+        run: echo "0" > ./.github/steps/-step.txt
+
+      - name: Commit changes
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email github-actions[bot]@users.noreply.github.com
+
+          git add .
+          git commit -m "Reinitialized repository for ${{ vars.CLIENT_NAME }}" --amend
+          git push origin main --force
+        env:
+          CLIENT_NAME: ${{ vars.CLIENT_NAME }}

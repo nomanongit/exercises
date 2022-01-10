@@ -1,0 +1,75 @@
+name: Lesson - Step 1
+
+on:
+  workflow_dispatch:
+  create:
+
+# Reference: https://docs.github.com/en/actions/security-guides/automatic-token-authentication
+permissions:
+  # Need `contents: read` to checkout the repository.
+  # Need `contents: write` to update the step metadata.
+  contents: write
+
+jobs:
+  check_step:
+    name: Check step
+    runs-on: ubuntu-latest
+    steps:
+      # Needed so we can read the step number from -step.txt
+      - name: Checkout step file from repo
+        uses: actions/checkout@v4
+        with:
+          ref: step
+          sparse-checkout: |
+            .github/steps/-step.txt
+            .github/actions/check-steps/action.yml
+          sparse-checkout-cone-mode: false
+
+      - name: Run checks
+        uses: ./.github/actions/check-steps
+        with:
+          step: 1
+
+  main:
+    needs: check_step
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch' || success()
+    steps:
+
+      # We'll need to check out the repository so that we can edit the README.
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Let's get all the branches.
+
+      # In README.md, switch step 1 for step 2.
+      - name: Update to step 2
+        uses: skills/action-update-step@v2
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          from_step: 1
+          to_step: 2
+          base_branch_name: step
+
+      # Add three commits to the my-first-branch branch.
+      # - name: Add chapter2 commits
+      #   if: github.event_name != 'workflow_dispatch'
+      #   run: |
+      #     echo "Chatper 2" > chapter2
+      #     git add chapter2
+      #     git commit -m "Added chaptor2"
+
+      #     echo "Chapter 2" > chapter2
+      #     git commit -am "FIxed tyypo"
+
+      #     git commit -m "bugfix" --allow-empty
+      #     git commit -m "bugfix" --allow-empty
+
+      #     echo "Section 2" >> chapter2
+      #     git commit -am "Added 'Section 1' to chapter2"
+
+      #     echo "Section 2" >> chapter2
+      #     git commit -am "fix"
+      #     git commit -m "fiix" --allow-empty
+
+      #     git push origin my-first-branch

@@ -1,0 +1,50 @@
+name: Lesson - Step 4
+
+on:
+  workflow_dispatch:
+  create:
+
+# Reference: https://docs.github.com/en/actions/security-guides/automatic-token-authentication
+permissions:
+  # Need `contents: read` to checkout the repository.
+  # Need `contents: write` to update the step metadata.
+  contents: write
+
+jobs:
+  check_step:
+    name: Check step
+    runs-on: ubuntu-latest
+    steps:
+      # Needed so we can read the step number from -step.txt
+      - name: Checkout step file from repo
+        uses: actions/checkout@v4
+        with:
+          ref: step
+          sparse-checkout: |
+            .github/steps/-step.txt
+            .github/actions/check-steps/action.yml
+          sparse-checkout-cone-mode: false
+
+      - name: Run checks
+        uses: ./.github/actions/check-steps
+        with:
+          step: 4
+
+  main:
+    needs: check_step
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch' || success()
+    steps:
+      # We'll need to check out the repository so that we can edit the README.
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Let's get all the branches.
+
+      - name: Update to step 4
+        uses: skills/action-update-step@v2
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          from_step: 4
+          to_step: 5
+          base_branch_name: step

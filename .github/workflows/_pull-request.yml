@@ -1,0 +1,49 @@
+name: Admin - PR from fork
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+
+    # Print all contexts
+    - name: Print all contexts
+      run: |
+        echo "All contexts: ${{ toJson(github.event.pull_request) }}"
+
+    # print PR repo url
+    - name: Print PR repo url
+      run: |
+        echo "PR repo url: ${{ github.event.pull_request.head.repo.html_url }}"
+
+    # Print PR title and body
+    - name: Print PR title and body
+      run: |
+        echo "PR title: ${{ github.event.pull_request.title }}"
+        echo "PR body: ${{ github.event.pull_request.body }}"
+
+    # Print PR author
+    - name: Print PR author
+      run: |
+        echo "PR author: ${{ github.event.pull_request.user.login }}"
+        echo "PR email: ${{ github.event.pull_request.user.email}}"
+
+    # Checkout head repo code
+    - name: Checkout head repo code
+      uses: actions/checkout@v4
+      with:
+        # Repository as {owner}/{repo} to checkout from the head repository
+        repository: ${{ github.event.pull_request.head.repo.full_name }}
+        ref: ${{ github.event.pull_request.head.ref }}
+        # add github_token to access the head repository
+        token: ${{ secrets.SECRET_TOKEN }}
+
+    # List the files in the current directory
+    - name: List files
+      run: ls -l
+
+    - name: cat README.md
+      run: cat README.md
